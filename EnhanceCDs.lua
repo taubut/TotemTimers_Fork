@@ -477,13 +477,18 @@ function TotemTimers.EnhanceCDEvents(self, event, spell)
         local cdspell = self.cdspell
         if isSOD then cdspell = SpellNames[cdspell] end
         local start, duration, enable = GetSpellCooldown(cdspell)
-        if (not start and not duration) then --or (duration <= 1.5 and not InCombatLockdown()) then 			
+        if (not start and not duration) then --or (duration <= 1.5 and not InCombatLockdown()) then
             self.timer:Stop(1)
         else
             if duration <= 1.5 then
                 self.timer:Stop(1)
             elseif duration > 1.5 then
-                self.timer:Start(1,start+duration-GetTime(),duration)
+                local timeLeft = start + duration - GetTime()
+                if timeLeft > 0 then
+                    self.timer:Start(1, timeLeft, duration)
+                else
+                    self.timer:Stop(1)
+                end
             end
             CooldownFrame_Set(self.cooldown, start, duration, enable)
         end
