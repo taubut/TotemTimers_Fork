@@ -192,6 +192,13 @@ function XiTimers:new(nroftimers, unclickable)
 	end
 
     local flash = self.button.Flash
+    -- TBC Anniversary fix: Resize Flash texture to match button size
+    local buttonWidth, buttonHeight = self.button:GetSize()
+    if flash and buttonWidth and buttonHeight then
+        flash:SetSize(buttonWidth, buttonHeight)
+        flash:ClearAllPoints()
+        flash:SetPoint("CENTER", self.button, "CENTER", 0, 0)
+    end
     flash.animation = flash:CreateAnimationGroup()
     flash.animation:SetLooping("NONE")
     flash.flashAnim = flash.animation:CreateAnimation()
@@ -755,10 +762,18 @@ end
 
 function XiTimers:SetWidth(width)
 	self.button:SetWidth(width)
+    -- TBC Anniversary fix: Also resize Flash texture
+    if self.button.Flash then
+        self.button.Flash:SetWidth(width)
+    end
 end
 
 function XiTimers:SetHeight(height)
 	self.button:SetHeight(height)
+    -- TBC Anniversary fix: Also resize Flash texture
+    if self.button.Flash then
+        self.button.Flash:SetHeight(height)
+    end
 end
 
 function XiTimers:SetFont(font)

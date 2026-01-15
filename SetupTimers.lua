@@ -599,7 +599,9 @@ function TotemTimers.SetCastButtonSpells()
                 end
             end
             if TTActionBars and TTActionBars.bars and TTActionBars.bars[timer.nr] then
-                TTActionBars.bars[timer.nr]:SetSpells(totems)
+                -- TBC Anniversary fix: Pass true to use spell names instead of IDs
+                -- Secure action buttons in TBC need spell names, not IDs
+                TTActionBars.bars[timer.nr]:SetSpells(totems, true)
             end
         end
     end

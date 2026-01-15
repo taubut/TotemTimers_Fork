@@ -12,15 +12,27 @@ TotemTimers is a comprehensive Shaman addon that provides totem timers, cooldown
 
 TBC Anniversary Edition (WOW_PROJECT_ID = 5) introduced several compatibility issues that are fixed in this fork:
 
+### Core Fixes
 - **GetSpecialization fix** - TBC Anniversary uses talent point position 5, not 3
 - **TimeColor/TimerBarColor nil errors** - Added defensive checks for GUI accessing profile before initialization
 - **XiTimers.timers nil errors** - Fixed multiple files accessing timers before they're created
 - **MaelstromIcon nil error** - Added nil check (Maelstrom Weapon only exists in WotLK+)
 - **ActionButton_Update hook error** - Function doesn't exist in TBC Anniversary
 - **BuffFrame.BuffAlphaValue nil error** - Added fallback value for flash animations
-- **Yellow triangle overlays** - Hidden Dragonflight UI textures (IDs 4613342, 130840) that showed on button clicks
 - **Negative timer display fix** - Added guard against negative cooldown calculations
 - **TOC Interface version** - Updated to 20505
+
+### UI Fixes
+- **Yellow triangle overlays** - Hidden Dragonflight UI textures (IDs 4613342, 130840) that showed on button clicks
+- **Dropdown menu triangles** - Fixed triangle overlays appearing on totem dropdown menu buttons
+- **Flash border sizing** - Red warning flash border now correctly matches icon size
+
+### Dropdown Menu Fixes
+- **Left-click casting** - Clicking a totem in the dropdown menu now properly casts the spell
+- **Right-click assignment** - Right-clicking a totem now correctly assigns it to the timer button
+- **Spell name compatibility** - Uses spell names instead of spell IDs for TBC Anniversary secure button compatibility
+- **Click registration** - Fixed click registration to use "AnyUp/AnyDown" for proper secure action handling
+- **Macro fallback** - Added macro-type casting as fallback for reliable spell casting
 
 ## Installation
 

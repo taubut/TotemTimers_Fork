@@ -54,6 +54,38 @@ function TTActionBars:new(numbuttons, parent, secondanchor, directionanchor, bar
         _G[b:GetName().."NormalTexture"]:SetTexture(nil)
         b.icon:Show()
 
+        -- TBC Anniversary fix: Hide the problematic unnamed textures (triangle overlays)
+        local regions = {b:GetRegions()}
+        for _, region in ipairs(regions) do
+            if region:GetObjectType() == "Texture" then
+                local name = region:GetName()
+                if not name or (not name:find("Icon") and not name:find("Flash") and not name:find("Count") and not name:find("HotKey")) then
+                    local tex = region:GetTexture()
+                    if tex == 4613342 or tex == 130840 then
+                        region:SetTexture(nil)
+                        region:Hide()
+                    end
+                end
+            end
+        end
+
+        -- TBC Anniversary fix: Hide triangles when button is shown
+        b:HookScript("OnShow", function(self)
+            local regions = {self:GetRegions()}
+            for _, region in ipairs(regions) do
+                if region:GetObjectType() == "Texture" then
+                    local name = region:GetName()
+                    if not name then
+                        local tex = region:GetTexture()
+                        if tex == 4613342 or tex == 130840 then
+                            region:SetTexture(nil)
+                            region:Hide()
+                        end
+                    end
+                end
+            end
+        end)
+
 		b:SetAttribute("_childupdate-show", [[ if self:GetAttribute("alwaysshow") or self:GetAttribute("inactive") then return end
                                                if message then
                                                    self:Show()
@@ -95,9 +127,15 @@ function TTActionBars:new(numbuttons, parent, secondanchor, directionanchor, bar
         b:SetAttribute("_onleave", [[ if not self:GetParent():IsUnderMouse(true) then self:GetParent():ChildUpdate("show", false) end]])
         b.OnShow = function(self) end -- override if button should do additional stuff on show
         
-		b:RegisterForClicks("LeftButtonUp", "RightButtonUp", "MiddleButtonUp")
+		b:RegisterForClicks("AnyUp", "AnyDown")
 		b:SetAttribute("*type1", "spell")
         b:SetAttribute("*type2", nil)
+        -- TBC Anniversary fix: Use macro type for reliable casting
+        b:SetAttribute("type1", "macro")
+        b:SetAttribute("type", "macro")
+        b:SetAttribute("*type1", "macro")
+        -- TBC Anniversary fix: Use spell names instead of IDs for secure action buttons
+        b.useSpellNames = true
 
         XiTimers.HookTooltips(b)
 		
@@ -218,11 +256,21 @@ function TTActionBars:SetSpell(nr, spell, asname)
 	local _
     if type(spell)~="number" or spell~=0 then _,_,texture = GetSpellInfo(spell) end
     if type(spell)=="number" then button:SetAttribute("spellname", GetSpellInfo(spell)) end
+
 	if asname and type(spell) == "number" then
 		button:SetAttribute("spellid", spell)
-		spell = TotemTimers.SpellNames[spell]		
+		-- TBC Anniversary fix: Convert spell ID to name, fallback to GetSpellInfo if not in table
+		spell = TotemTimers.SpellNames[spell] or GetSpellInfo(spell)
 	end
 	button:SetAttribute("*spell1", spell)
+    -- TBC Anniversary fix: Also set non-asterisk attributes for compatibility
+    button:SetAttribute("spell1", spell)
+    button:SetAttribute("spell", spell)
+    -- TBC Anniversary fix: Set macrotext for fallback casting
+    if type(spell) == "string" then
+        button:SetAttribute("macrotext1", "/cast " .. spell)
+        button:SetAttribute("macrotext", "/cast " .. spell)
+    end
     button:SetAttribute("*spell2", spell)    
 	button:SetAttribute("inactive", false)
     button.icon:SetTexture(texture)
