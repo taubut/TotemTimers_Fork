@@ -499,23 +499,25 @@ if WOW_PROJECT_ID > WOW_PROJECT_BURNING_CRUSADE_CLASSIC or C_Seasons.GetActiveSe
             return TotemTimers.ActiveProfile.MaelstromNumberOnly
         end,
     }
+end
 
-    for i,lc in pairs(TotemTimers.LongCooldownSpells) do
-        local spellID = lc.spell
-        TotemTimers.options.args.enhancecds.args["4"].args[tostring(spellID)] = {
-            order = i,
-            type = "toggle",
-            name = SpellNames[spellID],
-            set = function(info, val)
-                TotemTimers.ActiveProfile.LongCooldownSpells[spellID] = val
-                TotemTimers.ProcessSetting("LongCooldowns")
-            end,
-            get = function()
-                local val = TotemTimers.ActiveProfile.LongCooldownSpells[spellID]
-                return val == nil or val
-            end
-        }
-    end
+-- Long Cooldowns toggles (Fire Elemental, Earth Elemental, Shamanistic Rage, Bloodlust/Heroism)
+-- Moved outside the Wrath/SoD conditional so it works in TBC Anniversary
+for i,lc in pairs(TotemTimers.LongCooldownSpells) do
+    local spellID = lc.spell
+    TotemTimers.options.args.enhancecds.args["4"].args[tostring(spellID)] = {
+        order = i,
+        type = "toggle",
+        name = SpellNames[spellID],
+        set = function(info, val)
+            TotemTimers.ActiveProfile.LongCooldownSpells[spellID] = val
+            TotemTimers.ProcessSetting("LongCooldowns")
+        end,
+        get = function()
+            local val = TotemTimers.ActiveProfile.LongCooldownSpells[spellID]
+            return val == nil or val
+        end
+    }
 end
 
 if C_Seasons.GetActiveSeason() == 2 then

@@ -678,7 +678,9 @@ SettingsFunctions = {
 
     Tracker_Clickthrough = function(value, Timers)
         for i = TRACKER_START, TRACKER_END do
-            Timers[i].button:EnableMouse(not value)
+            if Timers[i] and Timers[i].button then
+                Timers[i].button:EnableMouse(not value)
+            end
         end
     end,
 

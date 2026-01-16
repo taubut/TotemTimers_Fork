@@ -1096,12 +1096,21 @@ XiTimers.TimerEvent = function(self, event, ...)
         else
             name, _, _, count, duration, expires = AuraUtil.FindAuraByName(buff, "player", "HELPFUL")
         end
-        if name and duration and expires then
+        if name and expires then
             timer.buffIsActive = true
             timer.prohibitCooldown = true
             timer.StopPulse = false
-            timer:StartBarTimer(expires - GetTime(), duration)
-            timer:Start(1, expires - GetTime(), duration)
+            -- Handle infinite duration buffs (duration = 0, like Nature's Swiftness waiting for cast)
+            if duration and duration > 0 then
+                timer:StartBarTimer(expires - GetTime(), duration)
+                timer:Start(1, expires - GetTime(), duration)
+            else
+                -- Infinite buff - just show the icon without a timer, hide any existing timer text
+                timer:StopBarTimer()
+                timer:Stop(1)
+                timer.buffIsActive = true  -- Keep this true so cooldown check doesn't run
+                timer.prohibitCooldown = true
+            end
         elseif timer.buffIsActive then
             timer.buffIsActive = false
             timer.prohibitCooldown = false
