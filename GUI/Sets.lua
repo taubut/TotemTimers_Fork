@@ -158,7 +158,9 @@ frame:HookScript("OnShow", function(self)
             local name = newSet.name or ("Loadout " .. #Sets)
             print("|cff00ff00TotemTimers:|r Saved loadout '" .. name .. "'")
 
-            ACR:NotifyChange("TotemTimers")
+            -- Hide and show to trigger OnShow which rebuilds the args
+            frame:Hide()
+            frame:Show()
         end,
     }
 
@@ -254,18 +256,24 @@ frame:HookScript("OnShow", function(self)
                 type = "header",
                 order = baseOrder,
                 name = function()
+                    local currentSet = Sets[i]
+                    if not currentSet then return "" end
                     local prefix = ""
                     if TotemTimers.ActiveProfile.ActiveLoadout == i then
                         prefix = "|cff00ff00[Active]|r "
                     end
-                    return prefix .. (set.name or ("Loadout " .. i))
+                    return prefix .. (currentSet.name or ("Loadout " .. i))
                 end,
             }
 
             args["setDesc" .. i] = {
                 type = "description",
                 order = baseOrder + 1,
-                name = GetTotemDescription(set),
+                name = function()
+                    local currentSet = Sets[i]
+                    if not currentSet then return "" end
+                    return GetTotemDescription(currentSet)
+                end,
             }
 
             args["setRename" .. i] = {
@@ -274,10 +282,12 @@ frame:HookScript("OnShow", function(self)
                 order = baseOrder + 2,
                 arg = i,
                 set = function(info, value)
+                    if not Sets[info.arg] then return end
                     Sets[info.arg].name = value
                     ACR:NotifyChange("TotemTimers")
                 end,
                 get = function(info)
+                    if not Sets[info.arg] then return "" end
                     return Sets[info.arg].name or ""
                 end,
             }
@@ -285,15 +295,19 @@ frame:HookScript("OnShow", function(self)
             args["setIcon" .. i] = {
                 type = "execute",
                 name = function()
-                    local icon = Sets[i].icon or TotemTimers.GetLoadoutIcon(i)
+                    local currentSet = Sets[i]
+                    if not currentSet then return "Choose Icon" end
+                    local icon = currentSet.icon or TotemTimers.GetLoadoutIcon(i)
                     return "|T" .. icon .. ":20|t Choose Icon"
                 end,
                 desc = "Click to choose an icon for this loadout",
                 order = baseOrder + 2.5,
                 arg = i,
                 func = function(info)
+                    if not Sets[info.arg] then return end
                     local loadoutIndex = info.arg  -- Capture value for callback
                     TotemTimers.OpenIconPicker(loadoutIndex, function(selectedIcon)
+                        if not Sets[loadoutIndex] then return end
                         Sets[loadoutIndex].icon = selectedIcon
                         -- Update loadout bar
                         if TotemTimers.UpdateLoadoutBarIcon then
@@ -313,6 +327,7 @@ frame:HookScript("OnShow", function(self)
                 order = baseOrder + 3,
                 arg = i,
                 func = function(info)
+                    if not Sets[info.arg] then return end
                     local popup = StaticPopup_Show("TOTEMTIMERS_DELETESET", Sets[info.arg].name or info.arg)
                     popup.data = info.arg
                 end,
@@ -328,7 +343,8 @@ local deleteOnAccept = StaticPopupDialogs["TOTEMTIMERS_DELETESET"].OnAccept
 StaticPopupDialogs["TOTEMTIMERS_DELETESET"].OnAccept = function(self, nr)
     deleteOnAccept(self, nr)
     if frame:IsVisible() then
-        ACR:NotifyChange("TotemTimers")
-        InterfaceOptionsFrame_OpenToCategory(frame)
+        -- Hide and show to trigger OnShow which rebuilds the args
+        frame:Hide()
+        frame:Show()
     end
 end
