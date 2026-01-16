@@ -2,6 +2,7 @@ if select(2, UnitClass("player")) ~= "SHAMAN" then return end
 
 -- Icon Picker Frame for TotemTimers Loadouts
 -- Creates a grid-based icon selector like the macro UI
+-- Uses virtual scrolling to handle thousands of icons efficiently
 
 local IconPicker = {}
 TotemTimers.IconPicker = IconPicker
@@ -10,12 +11,13 @@ local ICONS_PER_ROW = 10
 local ICON_SIZE = 36
 local ICON_SPACING = 4
 local VISIBLE_ROWS = 8
+local ROW_HEIGHT = ICON_SIZE + ICON_SPACING
 
 local allIcons = {}
 local filteredIcons = {}
 local currentCallback = nil
 local currentLoadoutIndex = nil
-local scrollOffset = 0
+local selectedIconIndex = nil
 
 -- Build the list of all available icons
 local function BuildIconList()
@@ -111,12 +113,48 @@ local function BuildIconList()
     filteredIcons = allIcons
 end
 
+-- Update visible buttons based on scroll position (virtual scrolling)
+local function UpdateVisibleButtons()
+    local frame = IconPicker.frame
+    if not frame then return end
+
+    local scrollFrame = frame.scrollFrame
+    local offset = scrollFrame:GetVerticalScroll()
+    local firstVisibleRow = math.floor(offset / ROW_HEIGHT)
+    local firstIconIndex = firstVisibleRow * ICONS_PER_ROW + 1
+
+    -- Update each button with the correct icon
+    for i, btn in ipairs(frame.iconButtons) do
+        local iconIndex = firstIconIndex + i - 1
+        if iconIndex <= #filteredIcons then
+            local iconPath = filteredIcons[iconIndex]
+            btn.iconIndex = iconIndex
+            btn.iconPath = iconPath
+            btn.icon:SetTexture(iconPath)
+
+            -- Show selection border if this is the selected icon
+            if iconIndex == selectedIconIndex then
+                btn.border:Show()
+            else
+                btn.border:Hide()
+            end
+
+            btn:Show()
+        else
+            btn:Hide()
+        end
+    end
+end
+
 -- Create the icon picker frame
 local function CreateIconPickerFrame()
     if IconPicker.frame then return end
 
+    local frameWidth = ICONS_PER_ROW * (ICON_SIZE + ICON_SPACING) + 50
+    local frameHeight = VISIBLE_ROWS * ROW_HEIGHT + 110
+
     local frame = CreateFrame("Frame", "TotemTimers_IconPicker", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(ICONS_PER_ROW * (ICON_SIZE + ICON_SPACING) + 40, VISIBLE_ROWS * (ICON_SIZE + ICON_SPACING) + 100)
+    frame:SetSize(frameWidth, frameHeight)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("DIALOG")
     frame:SetMovable(true)
@@ -143,18 +181,92 @@ local function CreateIconPickerFrame()
     selectedLabel:SetPoint("LEFT", selectedBG, "RIGHT", 10, 0)
     selectedLabel:SetText("Selected")
 
-    -- Scroll frame for icons
-    local scrollFrame = CreateFrame("ScrollFrame", "TotemTimers_IconPickerScroll", frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -80)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -35, 45)
+    -- Container for icons (clips content)
+    local iconContainer = CreateFrame("Frame", nil, frame)
+    iconContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -80)
+    iconContainer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -35, 45)
+    iconContainer:SetClipsChildren(true)
+    frame.iconContainer = iconContainer
 
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetSize(ICONS_PER_ROW * (ICON_SIZE + ICON_SPACING), 1000)
-    scrollFrame:SetScrollChild(scrollChild)
-    frame.scrollChild = scrollChild
+    -- Scroll frame (for scroll bar only, not for content)
+    local scrollFrame = CreateFrame("ScrollFrame", "TotemTimers_IconPickerScroll", frame, "FauxScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", iconContainer, "TOPLEFT", 0, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", iconContainer, "BOTTOMRIGHT", -18, 0)
+    frame.scrollFrame = scrollFrame
 
-    -- Icon buttons container
+    -- Create only enough buttons for visible area (+ 1 row buffer)
+    local numVisibleButtons = ICONS_PER_ROW * (VISIBLE_ROWS + 1)
     frame.iconButtons = {}
+
+    for i = 1, numVisibleButtons do
+        local btn = CreateFrame("Button", nil, iconContainer)
+        btn:SetSize(ICON_SIZE, ICON_SIZE)
+
+        local row = math.floor((i - 1) / ICONS_PER_ROW)
+        local col = (i - 1) % ICONS_PER_ROW
+        btn:SetPoint("TOPLEFT", iconContainer, "TOPLEFT", col * (ICON_SIZE + ICON_SPACING), -row * ROW_HEIGHT)
+
+        local icon = btn:CreateTexture(nil, "ARTWORK")
+        icon:SetAllPoints()
+        btn.icon = icon
+
+        local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(1, 1, 1, 0.3)
+
+        local border = btn:CreateTexture(nil, "OVERLAY")
+        border:SetSize(ICON_SIZE * 1.8, ICON_SIZE * 1.8)
+        border:SetPoint("CENTER")
+        border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+        border:SetBlendMode("ADD")
+        border:Hide()
+        btn.border = border
+
+        btn:SetScript("OnClick", function(self)
+            -- Update selection
+            selectedIconIndex = self.iconIndex
+            frame.selectedIconPath = self.iconPath
+            frame.selectedIcon:SetTexture(self.iconPath)
+
+            -- Update all visible buttons to show/hide selection border
+            for _, b in ipairs(frame.iconButtons) do
+                if b.iconIndex == selectedIconIndex then
+                    b.border:Show()
+                else
+                    b.border:Hide()
+                end
+            end
+        end)
+
+        btn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            local path = self.iconPath
+            local name
+            if type(path) == "number" then
+                name = tostring(path)
+            elseif type(path) == "string" then
+                name = path:match("Interface\\Icons\\(.+)") or path
+            else
+                name = "Unknown"
+            end
+            GameTooltip:SetText(name)
+            GameTooltip:Show()
+        end)
+
+        btn:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+
+        frame.iconButtons[i] = btn
+    end
+
+    -- Scroll handler
+    scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
+        local numRows = math.ceil(#filteredIcons / ICONS_PER_ROW)
+        FauxScrollFrame_OnVerticalScroll(self, offset, ROW_HEIGHT, function()
+            UpdateVisibleButtons()
+        end)
+    end)
 
     -- Okay button
     local okayButton = CreateFrame("Button", nil, frame, "GameMenuButtonTemplate")
@@ -180,92 +292,16 @@ local function CreateIconPickerFrame()
     IconPicker.frame = frame
 end
 
--- Create icon buttons for the grid
-local function CreateIconButtons()
+-- Initialize/update the scroll frame
+local function InitializeScrollFrame()
     local frame = IconPicker.frame
-    local scrollChild = frame.scrollChild
+    local scrollFrame = frame.scrollFrame
 
-    -- Calculate how many buttons we need
-    local numIcons = #filteredIcons
-    local numRows = math.ceil(numIcons / ICONS_PER_ROW)
+    local numRows = math.ceil(#filteredIcons / ICONS_PER_ROW)
+    local totalHeight = numRows * ROW_HEIGHT
 
-    -- Resize scroll child
-    scrollChild:SetHeight(numRows * (ICON_SIZE + ICON_SPACING) + ICON_SPACING)
-
-    -- Create/update buttons
-    for i = 1, numIcons do
-        local btn = frame.iconButtons[i]
-        if not btn then
-            btn = CreateFrame("Button", nil, scrollChild)
-            btn:SetSize(ICON_SIZE, ICON_SIZE)
-
-            local icon = btn:CreateTexture(nil, "ARTWORK")
-            icon:SetAllPoints()
-            btn.icon = icon
-
-            local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-            highlight:SetAllPoints()
-            highlight:SetColorTexture(1, 1, 1, 0.3)
-
-            local border = btn:CreateTexture(nil, "OVERLAY")
-            border:SetSize(ICON_SIZE * 1.8, ICON_SIZE * 1.8)  -- Action button border needs ~1.8x icon size
-            border:SetPoint("CENTER")
-            border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-            border:SetBlendMode("ADD")
-            border:Hide()
-            btn.border = border
-
-            btn:SetScript("OnClick", function(self)
-                -- Deselect previous
-                for _, b in ipairs(frame.iconButtons) do
-                    if b.border then b.border:Hide() end
-                end
-                -- Select this one
-                self.border:Show()
-                frame.selectedIconPath = self.iconPath
-                frame.selectedIcon:SetTexture(self.iconPath)
-            end)
-
-            btn:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                -- Try to show icon name (iconPath can be a number file ID or string path)
-                local path = self.iconPath
-                local name
-                if type(path) == "number" then
-                    name = tostring(path)
-                elseif type(path) == "string" then
-                    name = path:match("Interface\\Icons\\(.+)") or path
-                else
-                    name = "Unknown"
-                end
-                GameTooltip:SetText(name)
-                GameTooltip:Show()
-            end)
-
-            btn:SetScript("OnLeave", function()
-                GameTooltip:Hide()
-            end)
-
-            frame.iconButtons[i] = btn
-        end
-
-        -- Position
-        local row = math.floor((i - 1) / ICONS_PER_ROW)
-        local col = (i - 1) % ICONS_PER_ROW
-        btn:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", col * (ICON_SIZE + ICON_SPACING), -row * (ICON_SIZE + ICON_SPACING))
-
-        -- Set icon
-        local iconPath = filteredIcons[i]
-        btn.iconPath = iconPath
-        btn.icon:SetTexture(iconPath)
-        btn.border:Hide()
-        btn:Show()
-    end
-
-    -- Hide extra buttons
-    for i = numIcons + 1, #frame.iconButtons do
-        frame.iconButtons[i]:Hide()
-    end
+    FauxScrollFrame_Update(scrollFrame, numRows, VISIBLE_ROWS, ROW_HEIGHT)
+    UpdateVisibleButtons()
 end
 
 -- Open the icon picker
@@ -275,17 +311,25 @@ function TotemTimers.OpenIconPicker(loadoutIndex, callback)
 
     currentCallback = callback
     currentLoadoutIndex = loadoutIndex
+    selectedIconIndex = nil
 
     -- Set current icon if loadout has one
     local set = TotemTimers.ActiveProfile.TotemSets[loadoutIndex]
     if set and set.icon then
         IconPicker.frame.selectedIconPath = set.icon
         IconPicker.frame.selectedIcon:SetTexture(set.icon)
+        -- Find the index of the current icon
+        for i, icon in ipairs(filteredIcons) do
+            if icon == set.icon then
+                selectedIconIndex = i
+                break
+            end
+        end
     else
         IconPicker.frame.selectedIconPath = nil
         IconPicker.frame.selectedIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
 
-    CreateIconButtons()
+    InitializeScrollFrame()
     IconPicker.frame:Show()
 end
