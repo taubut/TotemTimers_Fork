@@ -72,8 +72,10 @@ end
 local function GetTotemDescription(set)
     local totems = {}
     for element = 1, 4 do
-        if set[element] and set[element] > 0 then
-            totems[element] = TotemTimers.ElementColors[element]:WrapTextInColorCode(SpellNames[set[element]])
+        if set[element] and ((type(set[element]) == "number" and set[element] > 0) or type(set[element]) == "string") then
+            -- Handle both spell ID (number) and spell name (string) formats
+            local spellName = type(set[element]) == "string" and set[element] or SpellNames[set[element]]
+            totems[element] = TotemTimers.ElementColors[element]:WrapTextInColorCode(spellName or "(unknown)")
         else
             totems[element] = TotemTimers.ElementColors[element]:WrapTextInColorCode("(none)")
         end
@@ -87,6 +89,11 @@ TotemTimers.HookGUIFrame(frame, categoryID)
 frame:HookScript("OnShow", function(self)
     TotemTimers.options.args.sets.args = {}
     local args = TotemTimers.options.args.sets.args
+
+    -- Ensure TotemSets exists and is a table
+    if not TotemTimers.ActiveProfile.TotemSets or type(TotemTimers.ActiveProfile.TotemSets) ~= "table" then
+        TotemTimers.ActiveProfile.TotemSets = {}
+    end
     local Sets = TotemTimers.ActiveProfile.TotemSets
 
     -- Description header

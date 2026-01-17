@@ -39,6 +39,10 @@ end
 local NameToSpellID = TotemTimers.NameToSpellID
 
 function TotemTimers.ProgramSetButtons()
+    -- Ensure TotemSets exists and is a table
+    if not TotemTimers.ActiveProfile.TotemSets or type(TotemTimers.ActiveProfile.TotemSets) ~= "table" then
+        TotemTimers.ActiveProfile.TotemSets = {}
+    end
     local Sets = TotemTimers.ActiveProfile.TotemSets
 	local nr = 0
 	for i=1,8 do
@@ -79,6 +83,10 @@ end
 function TotemTimers.SetAnchor_OnClick(self, button)
     if InCombatLockdown() then return end
 	if button == "RightButton" then
+        -- Ensure TotemSets exists and is a table
+        if not TotemTimers.ActiveProfile.TotemSets or type(TotemTimers.ActiveProfile.TotemSets) ~= "table" then
+            TotemTimers.ActiveProfile.TotemSets = {}
+        end
 		if #TotemTimers.ActiveProfile.TotemSets >= 8 then return end
         local set = {}
 		for i=1,4 do
@@ -165,7 +173,7 @@ function TotemTimers.GetLoadoutIcon(setIndex)
         return set.icon
     end
     -- Default: use the first totem's icon or a default
-    if set and set[1] and set[1] > 0 then
+    if set and set[1] and ((type(set[1]) == "number" and set[1] > 0) or type(set[1]) == "string") then
         local _, _, texture = GetSpellInfo(set[1])
         if texture then return texture end
     end
@@ -240,7 +248,7 @@ function TotemTimers.CreateLoadoutMenuButtons()
         for element = 1, 4 do
             local totemIcon = _G[btn:GetName().."Totem"..element]
             if totemIcon then
-                if set[element] and set[element] > 0 then
+                if set[element] and ((type(set[element]) == "number" and set[element] > 0) or type(set[element]) == "string") then
                     local _, _, texture = GetSpellInfo(set[element])
                     if texture then
                         totemIcon:SetTexture(texture)
@@ -413,8 +421,9 @@ function TotemTimers.LoadoutMenuButton_OnEnter(self)
         local SpellNames = TotemTimers.SpellNames
         local elementNames = {"Earth", "Fire", "Water", "Air"}
         for element = 1, 4 do
-            if set[element] and set[element] > 0 then
-                local spellName = SpellNames[set[element]] or GetSpellInfo(set[element]) or "Unknown"
+            if set[element] and ((type(set[element]) == "number" and set[element] > 0) or type(set[element]) == "string") then
+                -- Handle both spell ID (number) and spell name (string) formats
+                local spellName = type(set[element]) == "string" and set[element] or (SpellNames[set[element]] or GetSpellInfo(set[element]) or "Unknown")
                 local color = TotemTimers.ElementColors[element]
                 GameTooltip:AddLine(elementNames[element] .. ": " .. spellName, color.r, color.g, color.b)
             end
