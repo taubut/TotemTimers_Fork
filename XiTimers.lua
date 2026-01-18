@@ -471,7 +471,16 @@ function XiTimers:Stop(timer)
     if timer == 1 then
         self.button.time:Hide()
         self.button.cooldown:Hide()
-    end 
+    end
+    -- Stop any running flash animations to ensure immediate visual update
+    if timer <= self.numButtonTimers then
+        self.button.Flash.animation:Stop()
+        self.button.Flash:Hide()
+        if self.button.icons[timer] and self.button.icons[timer].animation then
+            self.button.icons[timer].animation:Stop()
+        end
+        self.flashIsAnimating = false
+    end
     if not self.dontAlpha then self:SetIconAlpha(self.button.icons[timer], self.alpha or 0.4) end
     if self.reverseAlpha then self:SetIconAlpha(self.button.icons[timer],self.maxAlpha) end
     if self.procFlash then self.button.bar:Hide() end
