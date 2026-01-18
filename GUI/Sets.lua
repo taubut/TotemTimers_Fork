@@ -13,6 +13,28 @@ TotemTimers.options.args.sets = {
 
 local SpellNames = TotemTimers.SpellNames
 
+-- Helper function to normalize spell values (handles string-encoded numbers from saved data)
+local function NormalizeSpellValue(value)
+    if value == nil then return nil end
+    if type(value) == "string" then
+        local num = tonumber(value)
+        if num then return num end
+    end
+    return value
+end
+
+-- Helper function to check if a spell value is valid (number > 0 or non-empty string)
+local function IsValidSpellValue(value)
+    if value == nil then return false end
+    local normalized = NormalizeSpellValue(value)
+    if type(normalized) == "number" then
+        return normalized > 0
+    elseif type(normalized) == "string" then
+        return normalized ~= ""
+    end
+    return false
+end
+
 local ACD = LibStub("AceConfigDialog-3.0")
 local ACR =	LibStub("AceConfigRegistry-3.0")
 
@@ -72,9 +94,10 @@ end
 local function GetTotemDescription(set)
     local totems = {}
     for element = 1, 4 do
-        if set[element] and ((type(set[element]) == "number" and set[element] > 0) or type(set[element]) == "string") then
+        local spellValue = NormalizeSpellValue(set[element])
+        if IsValidSpellValue(spellValue) then
             -- Handle both spell ID (number) and spell name (string) formats
-            local spellName = type(set[element]) == "string" and set[element] or SpellNames[set[element]]
+            local spellName = type(spellValue) == "string" and spellValue or SpellNames[spellValue]
             totems[element] = TotemTimers.ElementColors[element]:WrapTextInColorCode(spellName or "(unknown)")
         else
             totems[element] = TotemTimers.ElementColors[element]:WrapTextInColorCode("(none)")

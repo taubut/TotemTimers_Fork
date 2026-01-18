@@ -38,6 +38,28 @@ end
 
 local NameToSpellID = TotemTimers.NameToSpellID
 
+-- Helper function to normalize spell values (handles string-encoded numbers from saved data)
+local function NormalizeSpellValue(value)
+    if value == nil then return nil end
+    if type(value) == "string" then
+        local num = tonumber(value)
+        if num then return num end
+    end
+    return value
+end
+
+-- Helper function to check if a spell value is valid (number > 0 or non-empty string)
+local function IsValidSpellValue(value)
+    if value == nil then return false end
+    local normalized = NormalizeSpellValue(value)
+    if type(normalized) == "number" then
+        return normalized > 0
+    elseif type(normalized) == "string" then
+        return normalized ~= ""
+    end
+    return false
+end
+
 function TotemTimers.ProgramSetButtons()
     -- Ensure TotemSets exists and is a table
     if not TotemTimers.ActiveProfile.TotemSets or type(TotemTimers.ActiveProfile.TotemSets) ~= "table" then
@@ -173,8 +195,9 @@ function TotemTimers.GetLoadoutIcon(setIndex)
         return set.icon
     end
     -- Default: use the first totem's icon or a default
-    if set and set[1] and ((type(set[1]) == "number" and set[1] > 0) or type(set[1]) == "string") then
-        local _, _, texture = GetSpellInfo(set[1])
+    local spellValue = NormalizeSpellValue(set and set[1])
+    if IsValidSpellValue(spellValue) then
+        local _, _, texture = GetSpellInfo(spellValue)
         if texture then return texture end
     end
     return DEFAULT_LOADOUT_ICON
@@ -248,8 +271,9 @@ function TotemTimers.CreateLoadoutMenuButtons()
         for element = 1, 4 do
             local totemIcon = _G[btn:GetName().."Totem"..element]
             if totemIcon then
-                if set[element] and ((type(set[element]) == "number" and set[element] > 0) or type(set[element]) == "string") then
-                    local _, _, texture = GetSpellInfo(set[element])
+                local spellValue = NormalizeSpellValue(set[element])
+                if IsValidSpellValue(spellValue) then
+                    local _, _, texture = GetSpellInfo(spellValue)
                     if texture then
                         totemIcon:SetTexture(texture)
                         totemIcon:Show()
@@ -421,9 +445,10 @@ function TotemTimers.LoadoutMenuButton_OnEnter(self)
         local SpellNames = TotemTimers.SpellNames
         local elementNames = {"Earth", "Fire", "Water", "Air"}
         for element = 1, 4 do
-            if set[element] and ((type(set[element]) == "number" and set[element] > 0) or type(set[element]) == "string") then
+            local spellValue = NormalizeSpellValue(set[element])
+            if IsValidSpellValue(spellValue) then
                 -- Handle both spell ID (number) and spell name (string) formats
-                local spellName = type(set[element]) == "string" and set[element] or (SpellNames[set[element]] or GetSpellInfo(set[element]) or "Unknown")
+                local spellName = type(spellValue) == "string" and spellValue or (SpellNames[spellValue] or GetSpellInfo(spellValue) or "Unknown")
                 local color = TotemTimers.ElementColors[element]
                 GameTooltip:AddLine(elementNames[element] .. ": " .. spellName, color.r, color.g, color.b)
             end
