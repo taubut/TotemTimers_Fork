@@ -280,8 +280,18 @@ table.insert(TotemTimers.Modules, TotemTimers.SetupTimers)
 
 local TotemicCall = TotemTimers.SpellIDs.TotemicCall
 
-TotemUpdate = function(self, ...)
-    XiTimers.Update(self, ...)
+TotemUpdate = function(self, elapsed, ...)
+    XiTimers.Update(self, elapsed, ...)
+
+    -- Windfury twisting bar ticking
+    if self.barTimer and self.barTimer > 0 and self.button and self.button.bar then
+        self.barTimer = self.barTimer - elapsed
+        if self.barTimer <= 0 then
+            self.barTimer = 10.3
+        end
+    self.button.bar:SetValue(self.barTimer)
+    end
+
     if self.timers[1] > 0 and self.totemRange then
         UpdatePartyRange(self, "player")
         for i = 1,4 do
@@ -328,6 +338,10 @@ function TotemTimers:TotemEvent(event, arg1, arg2, arg3, ...)
                 self.timer.totemPositionX, self.timer.totemPositionY = HBD:GetPlayerWorldPosition()
                 if self.timer.twisting and totem == SpellIDs.Windfury then
                     self.timer:StartBarTimer(10.3)
+                    if self.button and self.button.bar then
+                        self.button.bar:SetMinMaxValues(0, 10.3)
+                        self.button.bar:SetValue(10.3)
+                    end
                 end
                 --TotemTimers.SetTotemPosition(self.element)
                 --[[ TotemTimers.ResetRange(self.element)
